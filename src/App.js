@@ -28,6 +28,12 @@ const apiDriver = axios.create({
 const apiBus = axios.create({
   baseURL: `http://localhost:8762`,
 });
+const apiHistory = axios.create({
+  baseURL: `http://localhost:8762`,
+});
+const apiSchedule = axios.create({
+  baseURL: `http://localhost:8762`,
+});
 
 const data = [
   {
@@ -69,6 +75,15 @@ class App extends Component {
       tickets: [],
       buses: [],
       drivers: [],
+      history: [],
+      schedule: [],
+      historyPush: {
+        id: null,
+        passengerId: null,
+        ticketId: null,
+        cost: null,
+      },
+      choosedTicket: 1,
     };
     apiLocation.get("/location/all").then((res) => {
       this.setState({ locations: res.data });
@@ -85,6 +100,14 @@ class App extends Component {
     apiDriver.get("/driver/all").then((res) => {
       this.setState({ drivers: res.data });
       console.log(this.state.drivers);
+    });
+    apiHistory.get("/history/all").then((res) => {
+      this.setState({ history: res.data });
+      console.log(this.state.history);
+    });
+    apiSchedule.get("/schedule/all").then((res) => {
+      this.setState({ schedule: res.data });
+      console.log(this.state.schedule);
     });
   }
 
@@ -133,6 +156,16 @@ class App extends Component {
       .catch((err) => console.log(err));
   };
 
+  handleSubmitSchedule = (e) => {
+    e.id = Number(e.id);
+    e.busId = Number(e.busId);
+    console.log(e);
+    axios
+      .post("http://localhost:8762/schedule/create", e)
+      .then((res) => console.log(res))
+      .catch((err) => console.log(err));
+  };
+
   onFinish = (values) => {
     const iin = values.iin;
     const ticketId = values.ticketId;
@@ -141,10 +174,40 @@ class App extends Component {
       console.log(res.data);
     });
   };
+  onFinishHistory = (values) => {
+    this.setState({
+      historyPush: {
+        id: Number(values.id),
+        passengerId: Number(values.passengerId),
+        ticketId: Number(this.state.choosedTicket.id),
+        cost: this.state.choosedTicket.cost,
+      },
+    });
+    console.log(this.state.historyPush);
+
+    // axios.get();
+    console.log("ssssss");
+    console.log(values);
+    // const ticketId = values.passengerId;
+    // console.log(iin);
+    axios
+      .post("http://localhost:8762/history/create", this.state.historyPush)
+      .then((res) => console.log(res))
+      .catch((err) => console.log(err));
+  };
+
   getByBusId = (e) => {
     apiDriver.get(`/driver/driversBus/${e}`).then((res) => {
       console.log(res.data);
       this.setState({ drivers: res.data });
+
+      // console.log(this.state.locations)
+    });
+  };
+  getByPassengerId = (e) => {
+    axios.get(`http://localhost:8762/history/all/${e}`).then((res) => {
+      console.log(res.data);
+      this.setState({ history: res.data });
 
       // console.log(this.state.locations)
     });
@@ -165,8 +228,16 @@ class App extends Component {
       // console.log(this.state.locations)
     });
   };
+  getByBusIdSchedule = (e) => {
+    apiSchedule.get(`/schedule/schedulesBus/${e}`).then((res) => {
+      console.log(res.data);
+      this.setState({ schedule: res.data });
 
+      // console.log(this.state.locations)
+    });
+  };
   render() {
+    const { history, schedule } = this.state;
     const layout = {
       labelCol: { span: 8 },
       wrapperCol: { span: 16 },
@@ -292,10 +363,47 @@ class App extends Component {
         dataIndex: "drivingLicenseLevel",
       },
     ];
+    const columnsHistory = [
+      {
+        title: "History ID",
+        dataIndex: "id",
+      },
+      {
+        title: "Passenger ID",
+        dataIndex: "passengerId",
+      },
+      {
+        title: "Ticket ID",
+        dataIndex: "ticketId",
+      },
+      {
+        title: "Cost",
+        dataIndex: "cost",
+      },
+    ];
+    const columnsSchedule = [
+      {
+        title: "Schedule ID",
+        dataIndex: "id",
+      },
+      {
+        title: "Bus ID",
+        dataIndex: "busId",
+      },
+      {
+        title: "Start time",
+        dataIndex: "startTime",
+      },
+      {
+        title: "End Time",
+        dataIndex: "endTime",
+      },
+    ];
     const textStyle = {
       textAlignVertical: "center",
       textAlign: "center",
     };
+    console.log(this.state.choosedTicket);
     return (
       <div className="App">
         <h1>Bus Intercity System</h1>
@@ -311,6 +419,15 @@ class App extends Component {
           </Col>
           <Col>
             <Table
+              onRow={(record, rowIndex) => {
+                return {
+                  onClick: (event) => {}, // click row
+                  onDoubleClick: (event) => {}, // double click row
+                  onContextMenu: (event) => {}, // right button click row
+                  onMouseEnter: (event) => {}, // mouse enter row
+                  onMouseLeave: (event) => {}, // mouse leave row
+                };
+              }}
               style={{ marginLeft: 10 }}
               columns={columnsTrips}
               dataSource={this.state.trips}
@@ -344,7 +461,7 @@ class App extends Component {
               <h1 style={{ textStyle }}>2.Buy ticket</h1>
             </Row>
           </Col>
-          <Col style={{ marginLeft: 20 }}>
+          <Col span={4} style={{ marginLeft: 20 }}>
             <Search
               placeholder="input search text"
               enterButton="Search"
@@ -352,13 +469,27 @@ class App extends Component {
               onSearch={(value) => this.getByTripIdTicket(value)}
             />
             <Table
+              onRow={(record, rowIndex) => {
+                return {
+                  onClick: (event) => {
+                    this.setState({
+                      choosedTicket: record,
+                    });
+                  }, // click row
+                  onDoubleClick: (event) => {}, // double click row
+                  onContextMenu: (event) => {}, // right button click row
+                  onMouseEnter: (event) => {}, // mouse enter row
+                  onMouseLeave: (event) => {}, // mouse leave row
+                };
+              }}
               columns={columnsTickets}
               dataSource={this.state.tickets}
               bordered
               title={() => "Tickets"}
             />
+            <h1>You choosed {this.state.choosedTicket.tripId}</h1>
           </Col>
-          <Col>
+          <Col span={4}>
             <Form {...layout} name="nest-messages" onFinish={this.onFinish}>
               <Form.Item label="Ticket ID" name={"ticketId"}>
                 <Input />
@@ -372,6 +503,38 @@ class App extends Component {
                 </Button>
               </Form.Item>
             </Form>
+            <Form
+              {...layout}
+              name="nest-messages"
+              onFinish={this.onFinishHistory}
+            >
+              <Form.Item label="History ID" name={"id"}>
+                <Input />
+              </Form.Item>
+              <Form.Item label="Passenger ID" name={"passengerId"}>
+                <Input />
+              </Form.Item>
+              <Form.Item wrapperCol={{ ...layout.wrapperCol, offset: 8 }}>
+                <Button type="primary" htmlType="submit">
+                  Submit
+                </Button>
+              </Form.Item>
+            </Form>
+          </Col>
+          <Col style={{ marginLeft: 20 }}>
+            <Search
+              // style = {{ width : 150, height : 150, marginLeft : 370 }}
+              placeholder="input search text"
+              enterButton="Search"
+              size="large"
+              onSearch={(value) => this.getByPassengerId(value)}
+            />
+            <Table
+              columns={columnsHistory}
+              dataSource={this.state.history}
+              bordered
+              title={() => "History"}
+            />
           </Col>
         </Row>
         <hr></hr>
@@ -405,6 +568,21 @@ class App extends Component {
               bordered
               title={() => "Drivers"}
             />
+          </Col>
+          <Col>
+            <Search
+              placeholder="input search text"
+              enterButton="Search"
+              size="large"
+              onSearch={(value) => this.getByBusIdSchedule(value)}
+            />
+            <Table
+              columns={columnsSchedule}
+              dataSource={this.state.schedule}
+              bordered
+              title={() => "Schedules"}
+            />
+            <h1>You choosed {this.state.choosedTicket.tripId}</h1>
           </Col>
         </Row>
         <hr></hr>
@@ -522,6 +700,32 @@ class App extends Component {
                 <Input />
               </Form.Item>
               <Form.Item label="Capacity" name={"capacity"}>
+                <Input />
+              </Form.Item>
+              <Form.Item wrapperCol={{ ...layout.wrapperCol, offset: 8 }}>
+                <Button type="primary" htmlType="submit">
+                  Submit
+                </Button>
+              </Form.Item>
+            </Form>
+          </Col>
+          <Col>
+            <h2>Add Schedule</h2>
+            <Form
+              {...layout}
+              name="nest-messages"
+              onFinish={this.handleSubmitSchedule}
+            >
+              <Form.Item label="ID" name={"id"}>
+                <Input />
+              </Form.Item>
+              <Form.Item label="Bus Id" name={"busId"}>
+                <Input />
+              </Form.Item>
+              <Form.Item label="Start Number" name={"startTime"}>
+                <Input />
+              </Form.Item>
+              <Form.Item label="End Time" name={"endTime"}>
                 <Input />
               </Form.Item>
               <Form.Item wrapperCol={{ ...layout.wrapperCol, offset: 8 }}>
